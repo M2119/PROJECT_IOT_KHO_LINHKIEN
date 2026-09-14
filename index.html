@@ -3,60 +3,83 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Giám Sát ESP32 (Cloud Render)</title>
+    <title>Dashboard Giám Sát ESP32 - Smart Storage v2.1</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="/socket.io/socket.io.js"></script>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #eef2f3; margin: 0; padding: 20px; color: #333; }
-        .main-wrapper { max-width: 950px; margin: 0 auto; background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.08); }
-        h1 { text-align: center; color: #2c3e50; margin-bottom: 20px; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f4f8; margin: 0; padding: 20px; color: #333; }
+        .main-wrapper { max-width: 1050px; margin: 0 auto; background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.06); }
+        h1 { text-align: center; color: #1e293b; margin-bottom: 8px; font-size: 26px; }
+        .sub-header { text-align: center; color: #64748b; font-size: 14px; margin-bottom: 20px; }
+
+        /* Status Bar hiển thị thông số chẩn đoán phần cứng */
+        .system-diag-bar { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; background: #0f172a; color: #e2e8f0; padding: 12px 18px; border-radius: 8px; font-size: 13px; margin-bottom: 20px; }
+        .diag-item { display: flex; align-items: center; gap: 6px; }
+        .diag-badge { background: #1e293b; padding: 3px 8px; border-radius: 4px; font-weight: bold; color: #38bdf8; font-family: monospace; }
         
         .cards-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px; }
-        .card { padding: 20px; border-radius: 8px; text-align: center; color: #fff; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .card.temp { background: linear-gradient(135deg, #ff7675, #d63031); }
-        .card.hum { background: linear-gradient(135deg, #74b9ff, #0984e3); }
-        .card h3 { margin: 0 0 10px 0; text-transform: uppercase; letter-spacing: 1px; font-size: 16px; }
-        .card .value { font-size: 36px; margin: 0; }
+        .card { padding: 22px; border-radius: 10px; text-align: center; color: #fff; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.08); }
+        .card.temp { background: linear-gradient(135deg, #ef4444, #b91c1c); }
+        .card.hum { background: linear-gradient(135deg, #0284c7, #0369a1); }
+        .card h3 { margin: 0 0 10px 0; text-transform: uppercase; letter-spacing: 1px; font-size: 15px; opacity: 0.9; }
+        .card .value { font-size: 40px; margin: 0; font-weight: 800; }
 
-        .chart-container { position: relative; width: 100%; height: 350px; margin-bottom: 25px; }
+        .chart-container { position: relative; width: 100%; height: 320px; margin-bottom: 25px; }
         
-        /* Grid cho 3 khu vực điều khiển (Responsive) */
-        .control-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-top: 20px; }
+        /* Grid điều khiển */
+        .control-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 18px; margin-top: 20px; }
         
-        .panel-box { padding: 20px; background: #f8fcfb; border: 2px dashed #b2bec3; border-radius: 8px; box-shadow: inset 0 0 5px rgba(0,0,0,0.02); display: flex; flex-direction: column; }
-        .panel-box h3 { margin-top: 0; color: #2c3e50; border-bottom: 2px solid #dfe6e9; padding-bottom: 8px; }
-        .panel-desc { font-size: 13px; color: #636e72; margin-bottom: 15px; flex-grow: 1; }
+        .panel-box { padding: 18px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); display: flex; flex-direction: column; }
+        .panel-box h3 { margin-top: 0; color: #1e293b; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; font-size: 15px; }
+        .panel-desc { font-size: 12px; color: #64748b; margin-bottom: 12px; flex-grow: 1; line-height: 1.4; }
         
-        .btn { padding: 10px 20px; font-size: 14px; font-weight: bold; border: none; border-radius: 5px; cursor: pointer; transition: background 0.2s; color: white; width: 100%; box-sizing: border-box; }
-        .btn-upload { background-color: #00b894; }
-        .btn-upload:hover { background-color: #009432; }
-        .btn-reset { background-color: #e17055; margin-top: auto; }
-        .btn-reset:hover { background-color: #d63031; }
-        .btn:disabled { background-color: #b2bec3 !important; cursor: not-allowed; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+        .form-group label { font-size: 11px; color: #475569; font-weight: 600; display: block; margin-bottom: 3px; }
+        .form-group input { width: 100%; padding: 6px 8px; font-size: 13px; border: 1px solid #cbd5e1; border-radius: 5px; box-sizing: border-box; }
+
+        .btn { padding: 9px 15px; font-size: 13px; font-weight: 600; border: none; border-radius: 6px; cursor: pointer; transition: all 0.2s; color: white; width: 100%; box-sizing: border-box; }
+        .btn-upload { background-color: #059669; }
+        .btn-upload:hover { background-color: #047857; }
+        .btn-config { background-color: #0284c7; }
+        .btn-config:hover { background-color: #0369a1; }
+        .btn-reset { background-color: #dc2626; margin-top: auto; }
+        .btn-reset:hover { background-color: #b91c1c; }
+        .btn:disabled { background-color: #94a3b8 !important; cursor: not-allowed; }
         
-        /* Khu vực hiển thị còi */
-        .buzzer-status { display: flex; align-items: center; justify-content: space-between; padding: 10px; background: #fff; border-radius: 6px; margin-bottom: 15px; border: 1px solid #dfe6e9; font-size: 13px; }
+        /* Trạng thái còi */
+        .buzzer-status { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: #fff; border-radius: 6px; margin-bottom: 12px; border: 1px solid #e2e8f0; font-size: 12px; }
         .buzzer-indicator { font-weight: bold; }
-        .buzzer-indicator.on { color: #d63031; }
-        .buzzer-indicator.off { color: #b2bec3; }
+        .buzzer-indicator.on { color: #dc2626; }
+        .buzzer-indicator.off { color: #059669; }
 
-        .status-msg { margin-top: 12px; font-size: 13px; font-weight: 500; text-align: left; line-height: 1.4; min-height: 20px; }
-        .spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid rgba(0,0,0,0.1); border-left-color: currentColor; border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 6px; vertical-align: middle; }
+        .status-msg { margin-top: 10px; font-size: 12px; font-weight: 500; text-align: left; line-height: 1.4; min-height: 18px; color: #475569; }
+        .spinner { display: inline-block; width: 10px; height: 10px; border: 2px solid rgba(0,0,0,0.1); border-left-color: currentColor; border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 5px; vertical-align: middle; }
         @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
 
     <div class="main-wrapper">
-        <h1>HỆ THỐNG GIÁM SÁT KHO HÀNG</h1>
+        <h1>HỆ THỐNG GIÁM SÁT KHO HÀNG THÔNG MINH</h1>
+        <div class="sub-header">ESP32 FreeRTOS Dual-Core &amp; Edge-Buffering Resilience System</div>
+
+        <!-- Thanh thông số chẩn đoán phần cứng (Hardware Diagnostics) -->
+        <div class="system-diag-bar">
+            <div class="diag-item"><span>Thiết bị:</span> <span id="diagDevice" class="diag-badge">ESP32_KHO_01</span></div>
+            <div class="diag-item"><span>Firmware:</span> <span id="diagFwVer" class="diag-badge">v2.1.0</span></div>
+            <div class="diag-item"><span>Free Heap:</span> <span id="diagHeap" class="diag-badge">-- KB</span></div>
+            <div class="diag-item"><span>WiFi RSSI:</span> <span id="diagRssi" class="diag-badge">-- dBm</span></div>
+            <div class="diag-item"><span>Uptime:</span> <span id="diagUptime" class="diag-badge">-- s</span></div>
+            <div class="diag-item"><span>Bản ghi Offline:</span> <span id="diagStorage" class="diag-badge">0</span></div>
+        </div>
 
         <div class="cards-grid">
             <div class="card temp">
-                <h3>Nhiệt Độ</h3>
+                <h3>Nhiệt Độ Hiện Tại</h3>
                 <p class="value" id="currentTemp">-- °C</p>
             </div>
             <div class="card hum">
-                <h3>Độ Ẩm</h3>
+                <h3>Độ Ẩm Hiện Tại</h3>
                 <p class="value" id="currentHum">-- %</p>
             </div>
         </div>
@@ -67,43 +90,74 @@
 
         <div class="control-grid">
             
+            <!-- Panel 1: Điều khiển Còi -->
             <div class="panel-box">
                 <h3>Còi Báo Động</h3>
-                <p class="panel-desc">Tắt/Bật tiếng còi báo động từ xa. Trạng thái sẽ đồng bộ với việc bấm nút vật lý tại kho.</p>
+                <p class="panel-desc">Tắt/Bật tiếng còi báo động từ xa. Đồng bộ 2 chiều với nút bấm vật lý tại kho.</p>
                 <div class="buzzer-status">
                     <span>Trạng thái:</span>
                     <span id="buzzerIndicator" class="buzzer-indicator off">Đang kết nối...</span>
                 </div>
-                <button class="btn" id="buzzerBtn" style="background-color: #636e72;" onclick="toggleBuzzer()" disabled>Đang đợi dữ liệu...</button>
+                <button class="btn" id="buzzerBtn" style="background-color: #64748b;" onclick="toggleBuzzer()" disabled>Đang đợi dữ liệu...</button>
             </div>
 
+            <!-- Panel 2: Cấu hình Ngưỡng Động (Dynamic Thresholds) -->
             <div class="panel-box">
-                <h3>Nâng Cấp OTA</h3>
-                <p class="panel-desc">Chọn file <code>.bin</code> để tự động nạp code từ xa qua Github API.</p>
-                <input type="file" id="firmwareInput" accept=".bin" style="margin-bottom: 12px; width: 100%;">
-                <button class="btn btn-upload" id="uploadBtn" onclick="triggerRemoteOTA()">Cập Nhật Firmware</button>
+                <h3>Cấu Hình Ngưỡng An Toàn</h3>
+                <p class="panel-desc">Cập nhật ngưỡng nhiệt độ/độ ẩm trực tiếp xuống Flash NVS của ESP32 qua MQTT.</p>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Nhiệt Min (°C)</label>
+                        <input type="number" id="cfgTempMin" value="20.0" step="0.5">
+                    </div>
+                    <div class="form-group">
+                        <label>Nhiệt Max (°C)</label>
+                        <input type="number" id="cfgTempMax" value="40.0" step="0.5">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Ẩm Min (%)</label>
+                        <input type="number" id="cfgHumMin" value="40.0" step="1">
+                    </div>
+                    <div class="form-group">
+                        <label>Ẩm Max (%)</label>
+                        <input type="number" id="cfgHumMax" value="80.0" step="1">
+                    </div>
+                </div>
+                <button class="btn btn-config" id="saveThresholdBtn" onclick="saveThresholds()">Cập Nhật Ngưỡng</button>
+                <div class="status-msg" id="thresholdStatusText"></div>
+            </div>
+
+            <!-- Panel 3: Nâng cấp FOTA an toàn -->
+            <div class="panel-box">
+                <h3>Nâng Cấp OTA (MD5)</h3>
+                <p class="panel-desc">Nạp firmware từ xa với xác thực mã băm MD5 toàn vẹn trước khi flash.</p>
+                <input type="file" id="firmwareInput" accept=".bin" style="margin-bottom: 10px; width: 100%; font-size: 11px;">
+                <button class="btn btn-upload" id="uploadBtn" onclick="triggerRemoteOTA()">Nạp Firmware</button>
                 <div class="status-msg" id="statusText">Sẵn sàng.</div>
             </div>
 
-            <div class="panel-box" style="background-color: #fff5f5;">
-                <h3 style="color: #d63031;">Hệ Thống Mạng</h3>
-                <p class="panel-desc">Xóa WiFi đã lưu. Mạch sẽ khởi động lại và mở chế độ cấu hình AP ban đầu.</p>
-                <button class="btn btn-reset" id="resetWifiBtn" onclick="triggerRemoteResetWiFi()">Reset Cấu Hình WiFi</button>
-                <div class="status-msg" id="resetStatusText" style="color: #636e72;">Sẵn sàng.</div>
+            <!-- Panel 4: Quản lý thiết bị & Reset -->
+            <div class="panel-box" style="background-color: #fef2f2;">
+                <h3 style="color: #b91c1c;">Hệ Thống Mạng</h3>
+                <p class="panel-desc">Xóa cấu hình WiFi &amp; NVS. Mạch sẽ khởi động lại và mở Access Point cấu hình.</p>
+                <button class="btn btn-reset" id="resetWifiBtn" onclick="triggerRemoteResetWiFi()">Reset WiFi &amp; NVS</button>
+                <div class="status-msg" id="resetStatusText">Sẵn sàng.</div>
             </div>
 
         </div>
     </div>
 
     <script>
-// --- CẤU HÌNH BIỂU ĐỒ ---
+        // --- CẤU HÌNH BIỂU ĐỒ CHART.JS ---
         const ctx = document.getElementById('realtimeChart').getContext('2d');
-        const MAX_POINTS = 15;
+        const MAX_POINTS = 20;
         const chartData = {
             labels: [],
             datasets: [
-                { label: 'Nhiệt độ (°C)', data: [], borderColor: '#d63031', backgroundColor: 'rgba(214, 48, 49, 0.1)', tension: 0.3, yAxisID: 'y-temp' },
-                { label: 'Độ ẩm (%)', data: [], borderColor: '#0984e3', backgroundColor: 'rgba(9, 132, 227, 0.1)', tension: 0.3, yAxisID: 'y-hum' }
+                { label: 'Nhiệt độ (°C)', data: [], borderColor: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.1)', tension: 0.3, yAxisID: 'y-temp' },
+                { label: 'Độ ẩm (%)', data: [], borderColor: '#0284c7', backgroundColor: 'rgba(2, 132, 199, 0.1)', tension: 0.3, yAxisID: 'y-hum' }
             ]
         };
 
@@ -111,7 +165,8 @@
             type: 'line',
             data: chartData,
             options: {
-                responsive: true, maintainAspectRatio: false,
+                responsive: true, 
+                maintainAspectRatio: false,
                 scales: {
                     'y-temp': { type: 'linear', position: 'left', title: { display: true, text: 'Nhiệt độ (°C)' } },
                     'y-hum': { type: 'linear', position: 'right', title: { display: true, text: 'Độ ẩm (%)' }, grid: { drawOnChartArea: false } }
@@ -120,16 +175,23 @@
         };
         const realtimeChart = new Chart(ctx, config);
 
-        // Biến lưu trạng thái còi, nhiệt độ, độ ẩm
         let currentBuzzerMuted = null;
         let currentTempValue = 0; 
         let currentHumValue = 0;
 
-        // --- KẾT NỐI SOCKET VÀ XỬ LÝ DỮ LIỆU ---
+        // --- KẾT NỐI SOCKET.IO VÀ XỬ LÝ SỰ KIỆN ---
         const socket = io();
         socket.on('mqttData', (data) => {
             
-            // Vẽ biểu đồ khi có dữ liệu cảm biến
+            // Cập nhật thông số chẩn đoán hệ thống
+            if (data.device_id) document.getElementById('diagDevice').innerText = data.device_id;
+            if (data.fw_ver || data.fw_version) document.getElementById('diagFwVer').innerText = data.fw_ver || data.fw_version;
+            if (data.free_heap) document.getElementById('diagHeap').innerText = Math.round(data.free_heap / 1024) + ' KB';
+            if (data.rssi) document.getElementById('diagRssi').innerText = data.rssi + ' dBm';
+            if (data.uptime || data.uptime_sec) document.getElementById('diagUptime').innerText = (data.uptime || data.uptime_sec) + 's';
+            if (data.storage_cnt !== undefined) document.getElementById('diagStorage').innerText = data.storage_cnt;
+
+            // Cập nhật giá trị đo đạc & vẽ đồ thị
             if (data.temp !== undefined && data.temp !== null && data.hum !== undefined) {
                 currentTempValue = parseFloat(data.temp);
                 currentHumValue = parseFloat(data.hum); 
@@ -138,7 +200,9 @@
                 document.getElementById('currentHum').innerText = currentHumValue.toFixed(1) + ' %';
                 
                 if (chartData.labels.length >= MAX_POINTS) {
-                    chartData.labels.shift(); chartData.datasets[0].data.shift(); chartData.datasets[1].data.shift();
+                    chartData.labels.shift(); 
+                    chartData.datasets[0].data.shift(); 
+                    chartData.datasets[1].data.shift();
                 }
                 
                 chartData.labels.push(data.time || new Date().toLocaleTimeString('vi-VN'));
@@ -152,50 +216,52 @@
                 currentBuzzerMuted = (data.alarm_muted === 1);
             }
 
-            // 🟢 LOGIC KHÓA NÚT CÒI ĐƯỢC NÂNG CẤP (Kiểm tra cả 2 thông số)
             if (currentBuzzerMuted !== null) {
                 const indicator = document.getElementById('buzzerIndicator');
                 const btn = document.getElementById('buzzerBtn');
                 
-                const isTempSafe = (currentTempValue >= 20.0 && currentTempValue <= 40.0);
-                const isHumSafe  = (currentHumValue >= 40.0 && currentHumValue <= 80.0);
+                const tMin = parseFloat(document.getElementById('cfgTempMin').value) || 20.0;
+                const tMax = parseFloat(document.getElementById('cfgTempMax').value) || 40.0;
+                const hMin = parseFloat(document.getElementById('cfgHumMin').value) || 40.0;
+                const hMax = parseFloat(document.getElementById('cfgHumMax').value) || 80.0;
+
+                const isTempSafe = (currentTempValue >= tMin && currentTempValue <= tMax);
+                const isHumSafe  = (currentHumValue >= hMin && currentHumValue <= hMax);
 
                 if (isTempSafe && isHumSafe) {
-                    // NẾU CẢ 2 AN TOÀN -> KHÓA NÚT
                     indicator.className = 'buzzer-indicator off';
-                    indicator.innerText = 'TRẠNG THÁI AN TOÀN (BÌNH THƯỜNG)';
+                    indicator.innerText = 'BÌNH THƯỜNG (AN TOÀN)';
                     btn.innerText = 'CÒI TỰ ĐỘNG KHÓA';
-                    btn.style.backgroundColor = '#b2bec3'; 
+                    btn.style.backgroundColor = '#94a3b8'; 
                     btn.style.cursor = 'not-allowed';
                     btn.disabled = true;
                 } else {
-                    // NẾU CÓ ÍT NHẤT 1 LỖI -> CHO PHÉP BẤM ĐIỀU KHIỂN CÒI
                     btn.style.cursor = 'pointer';
                     btn.disabled = false; 
                     
                     if (currentBuzzerMuted) {
                         indicator.className = 'buzzer-indicator off';
-                        indicator.innerText = '⚠️ CHẾ ĐỘ IM LẶNG (ĐANG MUTE)';
+                        indicator.innerText = '⚠️ ĐANG MUTE (TẮT TIẾNG)';
                         btn.innerText = 'MỞ LẠI CÒI BÁO ĐỘNG';
-                        btn.style.backgroundColor = '#00b894'; 
+                        btn.style.backgroundColor = '#059669'; 
                     } else {
                         indicator.className = 'buzzer-indicator on';
-                        indicator.innerText = '🚨 ĐANG HÚ CÒI (THÔNG SỐ VƯỢT NGƯỠNG)';
+                        indicator.innerText = '🚨 ĐANG HÚ CÒI (NGUY HIỂM)';
                         btn.innerText = 'TẮT TIẾNG CÒI TỪ XA (MUTE)';
-                        btn.style.backgroundColor = '#e17055'; 
+                        btn.style.backgroundColor = '#dc2626'; 
                     }
                 }
             }
         });
 
-        // --- HÀM KÍCH HOẠT ĐIỀU KHIỂN CÒI TỪ XA ---
+        // --- ĐIỀU KHIỂN CÒI TỪ XA ---
         function toggleBuzzer() {
             if (currentBuzzerMuted === null) return;
             const commandToSend = currentBuzzerMuted ? 'UNMUTE_BUZZER' : 'MUTE_BUZZER';
             const btn = document.getElementById('buzzerBtn');
             
             btn.disabled = true;
-            btn.innerHTML = '<span class="spinner"></span> Đang gửi lệnh...';
+            btn.innerHTML = '<span class="spinner"></span> Đang gửi...';
 
             fetch('/control-buzzer', {
                 method: 'POST',
@@ -208,19 +274,47 @@
             });
         }
 
-        // --- CÁC HÀM OTA VÀ RESET ---
+        // --- CẬP NHẬT NGƯỠNG ĐỘNG (DYNAMIC THRESHOLDS) ---
+        function saveThresholds() {
+            const temp_min = document.getElementById('cfgTempMin').value;
+            const temp_max = document.getElementById('cfgTempMax').value;
+            const hum_min  = document.getElementById('cfgHumMin').value;
+            const hum_max  = document.getElementById('cfgHumMax').value;
+            const statusEl = document.getElementById('thresholdStatusText');
+
+            statusEl.style.color = '#0284c7';
+            statusEl.innerHTML = '<span class="spinner"></span>Đang phát lệnh cập nhật ngưỡng tới ESP32...';
+
+            fetch('/set-thresholds', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ temp_min, temp_max, hum_min, hum_max })
+            })
+            .then(res => res.text())
+            .then(msg => {
+                statusEl.style.color = '#059669';
+                statusEl.innerText = '✓ ' + msg;
+            })
+            .catch(err => {
+                statusEl.style.color = '#dc2626';
+                statusEl.innerText = 'Lỗi: ' + err.message;
+            });
+        }
+
+        // --- NÂNG CẤP OTA VỚI MD5 ---
         function triggerRemoteOTA() {
             const input = document.getElementById('firmwareInput');
             const status = document.getElementById('statusText');
             const btn = document.getElementById('uploadBtn');
 
-            if (input.files.length === 0) { alert('Vui lòng chọn tệp tin định dạng .bin trước!'); return; }
+            if (input.files.length === 0) { alert('Vui lòng chọn tệp tin .bin trước!'); return; }
 
-            const payload = new FormData(); payload.append('firmware', input.files[0]);
+            const payload = new FormData(); 
+            payload.append('firmware', input.files[0]);
 
             btn.disabled = true;
-            status.style.color = '#0984e3';
-            status.innerHTML = '<span class="spinner"></span>Đang mã hóa dữ liệu gửi lên GitHub...';
+            status.style.color = '#0284c7';
+            status.innerHTML = '<span class="spinner"></span>Đang mã hóa MD5 & đẩy lên GitHub...';
 
             fetch('/upload-ota', { method: 'POST', body: payload })
             .then(async response => {
@@ -229,11 +323,11 @@
                 return msg;
             })
             .then(successMsg => {
-                status.innerHTML = '<span class="spinner"></span>' + successMsg + '<br><small style="color:#636e72;">Đang chờ mạch tải và nạp code. Vui lòng không tắt trang... (Mất khoảng 30s)</small>';
+                status.innerHTML = '<span class="spinner"></span>' + successMsg + '<br><small style="color:#64748b;">Mạch đang xác thực MD5 và nạp code (khoảng 30s)...</small>';
                 input.value = '';
             })
             .catch(error => {
-                status.style.color = '#d63031';
+                status.style.color = '#dc2626';
                 status.innerText = 'Lỗi hệ thống: ' + error.message;
                 btn.disabled = false;
             });
@@ -243,26 +337,27 @@
             const status = document.getElementById('statusText');
             const btn = document.getElementById('uploadBtn');
             if(res.success) {
-                status.style.color = '#00b894';
+                status.style.color = '#059669';
                 status.style.fontWeight = 'bold';
                 status.innerText = res.message;
             } else {
-                status.style.color = '#d63031';
+                status.style.color = '#dc2626';
                 status.innerText = res.message;
             }
             btn.disabled = false; 
         });
 
+        // --- RESET CẤU HÌNH WIFI ---
         function triggerRemoteResetWiFi() {
             const status = document.getElementById('resetStatusText');
             const btn = document.getElementById('resetWifiBtn');
 
-            if (!confirm("CẢNH BÁO: Hành động này sẽ xóa toàn bộ bộ nhớ mạng WiFi...")) return;
-            if (!confirm("XÁC NHẬN LẦN CUỐI:\nBạn sẽ phải ra tận nơi...")) return;
+            if (!confirm("CẢNH BÁO: Thao tác này sẽ xóa toàn bộ bộ nhớ WiFi & NVS...")) return;
+            if (!confirm("XÁC NHẬN LẦN CUỐI:\nThiết bị sẽ khởi động lại và mở Access Point cấu hình?")) return;
 
             btn.disabled = true;
-            status.style.color = '#d63031';
-            status.innerHTML = '<span class="spinner"></span>Đang phát lệnh Reset WiFi qua Broker MQTT...';
+            status.style.color = '#dc2626';
+            status.innerHTML = '<span class="spinner"></span>Đang phát lệnh Reset WiFi qua MQTT...';
 
             fetch('/reset-wifi', { method: 'POST' })
             .then(async response => {
@@ -271,12 +366,12 @@
                 return text;
             })
             .then(msg => {
-                status.style.color = '#2d3436'; status.style.fontWeight = 'bold';
-                status.innerText = '✓ Lệnh đã phát đi thành công! Thiết bị đang xóa bộ nhớ và khởi động lại...';
-                alert('Mạch đang thực hiện xóa cấu hình WiFi...');
+                status.style.color = '#1e293b'; 
+                status.style.fontWeight = 'bold';
+                status.innerText = '✓ Lệnh đã gửi thành công! Thiết bị đang xóa bộ nhớ và khởi động lại...';
             })
             .catch(err => {
-                status.style.color = '#d63031';
+                status.style.color = '#dc2626';
                 status.innerText = 'Thất bại: ' + err.message;
             })
             .finally(() => { btn.disabled = false; });
